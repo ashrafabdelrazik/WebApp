@@ -11,8 +11,8 @@ server {
         include snippets/snakeoil.conf;
 
         # Enable Logging
-        error_log /var/log/nginx/error.log;
-        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/Mikkawy-AppServer1_error.log;
+        access_log /var/log/nginx/Mikkawy-AppServer1_error.logg;
 
         # Disable server tokens
         server_tokens off;
