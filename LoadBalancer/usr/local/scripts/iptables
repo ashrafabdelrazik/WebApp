@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# Script Name	: Load Balancer IPTABLES Script
+# 
+# Description	: This script will flush iptables rules & drop all incoming, forward, outgoing connections and enable loopback, It consists of two parts ( incoming & outgoing connections )
+# * Incoming Connections:
+# - Allow incoming SSH requests on port 8022
+# - Allow incoming HTTP/HTTPS connections on port 80 for http and port 443 for https
+# * Outgoing Connections:
+# - Allow outgoing connections to certain DNS servers ( defined in the variables section )
+# - Allow outgoing HTTP/HTTPS connections to any destination 
+#
+# Author		: Ashraf Abdelrazik
+# Email			: ashrafabdelrazik1996@gmail.com
+
+#######################################################
+#--------------------- Variables ---------------------#
+ssh_port="8022"
+http_port="80"
+https_port="443"
+dns_port="53"
+dns_resolvers=("1.1.1.1" "8.8.8.8" "8.8.4.4")
+iptables_chains=("INPUT" "FORWARD" "OUTPUT")
+#--------------------- Variables ---------------------#
+#######################################################
+
+######################################################
+#--------------------- IPTABLES ---------------------#
+# Flush
+iptables -F
+
+# Self Closed System
+for chain in ${iptables_chains[@]}
+do
+	iptables --policy $chain DROP
+done
+
+# Enable Loopback
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+
+#---- Incoming Connections (START) ----#
+
+# SSH on port 8022
+iptables -A INPUT -p tcp --dport $ssh_port -m conntrack --ctstate N,E -j ACCEPT
+iptables -A OUTPUT -p tcp --sport $ssh_port -m conntrack --ctstate E -j ACCEPT
+
+# HTTP on port 80
+iptables -A INPUT -p tcp --dport $http_port -m conntrack --ctstate N,E -j ACCEPT
+iptables -A OUTPUT -p tcp --sport $http_port -m conntrack --ctstate E -j ACCEPT
+
+# HTTPS on port 443
+iptables -A INPUT -p tcp --dport $https_port -m conntrack --ctstate N,E -j ACCEPT
+iptables -A OUTPUT -p tcp --sport $https_port -m conntrack --ctstate E -j ACCEPT
+
+#---- Incoming Connections (END) ----#
+
+
+#---- Outgoing Connections (START) ----#
+
+# DNS lookup
+for nameserver in ${dns_resolvers[@]}
+do
+	iptables -A OUTPUT -p udp --dport $dns_port -d $nameserver -m conntrack --ctstate N,E -j ACCEPT
+	iptables -A INPUT -p udp --sport $dns_port -s $nameserver -m conntrack --ctstate E -j ACCEPT
+done
+
+# HTTP ( for sys updates )
+iptables -A OUTPUT -p tcp --dport $http_port -m conntrack --ctstate N,E -j ACCEPT
+iptables -A INPUT -p tcp --sport $http_port -m conntrack --ctstate E -j ACCEPT
+
+# HTTPS ( for sys updates )
+iptables -A OUTPUT -p tcp --dport $https_port -m conntrack --ctstate N,E -j ACCEPT
+iptables -A INPUT -p tcp --sport $https_port -m conntrack --ctstate E -j ACCEPT
+
+#---- Outgoing Connections (END) ----#
+
+#--------------------- IPTABLES ---------------------#
+######################################################
