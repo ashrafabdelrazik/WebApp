@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Script Name	: App Server Backup Script
+# Description	: This script will backup and encrypt the document root of the app server (/var/www/html/)
+# Author		: Ashraf Abdelrazik
+# Email			: ashrafabdelrazik1996@gmail.com
+
+#################################################
+#------------------> Variables <----------------#
+document_root="/var/www/"
+backups_directory="/etc/backups"
+key_path="/root/.ssh/backup.pem"
+#------------------> Variables <----------------#
+#################################################
+
+
+echo "========================================"
+echo "Backup Date: $(date +'%d-%m-%Y')"
+
+echo "Started at $(date +'%T')"
+# Compress /var/www/html
+if tar -cvpzf $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz -C $document_root html > /dev/null ; then
+        echo "Successfully compressed ..."
+else
+        echo "Failed to compress ..."
+fi
+
+# Check the backup file
+if tar -tzf $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz > /dev/null ; then
+        echo "The Backup file isn't corrupted ..."
+else
+        echo "The Backup file is corrupted ..."
+fi
+
+# Encrypt the backup file
+if openssl smime -encrypt -aes256 -in $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz -binary -outform DEM -out $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz.enc $key_path > /dev/null ; then
+	echo "Successfully Encrypted..."
+else
+        echo "Failed to encrypt ..."
+fi
+
+# Remove the original backup file
+if rm $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz > /dev/null ; then
+        echo "Successfully removed the original backup"
+else
+        echo "Failed to removed the original backup"
+fi
+
+echo "Ended at $(date +'%T')"
+echo "========================================"
+echo ""
