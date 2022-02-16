@@ -2,6 +2,7 @@
 
 # Script Name	: App Server Backup Script
 # Description	: This script will backup and encrypt the document root of the app server (/var/www/html/)
+# Crontab Job	: 00 00 * * * bash /usr/local/scripts/backup >> /etc/backups/log.txt 2>&1
 # Author		: Ashraf Abdelrazik
 # Email			: ashrafabdelrazik1996@gmail.com
 
