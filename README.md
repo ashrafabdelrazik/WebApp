@@ -1,5 +1,5 @@
 # WebApp
-This repository contains the scripts and the configuration files for Load Balancer Strucuture.
+This repository contains the scripts and the configuration files for Load Balancer Structure.
 
 # OverView
 Mikkawy.tk is just a WordPress site built on four Linux servers
