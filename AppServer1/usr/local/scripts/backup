@@ -14,38 +14,39 @@ key_path="/root/.ssh/backup.pem"
 #################################################
 
 
-echo "========================================"
-echo "Backup Date: $(date +'%d-%m-%Y')"
+echo "###################################################"
+echo "#------------ Backup Date: $(date +'%d-%m-%Y') ------------#"
 
-echo "Started at $(date +'%T')"
+echo "[!] Started at $(date +'%T')"
 # Compress /var/www/html
 if tar -cvpzf $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz -C $document_root html > /dev/null ; then
-        echo "Successfully compressed ..."
+        echo "[+] Successfully compressed ..."
 else
-        echo "Failed to compress ..."
+        echo "[-] Failed to compress ..."
 fi
 
 # Check the backup file
 if tar -tzf $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz > /dev/null ; then
-        echo "The Backup file isn't corrupted ..."
+        echo "[+] The Backup file isn't corrupted ..."
 else
-        echo "The Backup file is corrupted ..."
+        echo "[-] The Backup file is corrupted ..."
 fi
 
 # Encrypt the backup file
 if openssl smime -encrypt -aes256 -in $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz -binary -outform DEM -out $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz.enc $key_path > /dev/null ; then
-	echo "Successfully Encrypted..."
+		echo "[+] Successfully Encrypted ..."
 else
-        echo "Failed to encrypt ..."
+        echo "[-] Failed to encrypt ..."
 fi
 
 # Remove the original backup file
 if rm $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz > /dev/null ; then
-        echo "Successfully removed the original backup"
+        echo "[+] Successfully removed the original backup ..."
 else
-        echo "Failed to removed the original backup"
+        echo "[-] Failed to removed the original backup ..."
 fi
 
-echo "Ended at $(date +'%T')"
-echo "========================================"
+echo "[!] Ended at $(date +'%T')"
+echo "###################################################"
+echo "###################################################"
 echo ""
