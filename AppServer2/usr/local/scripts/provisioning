@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# Script Name	: App Server Provisioning Script
+#
+# Description	: Since we're going to execute this script on a fresh-new app server, this script will ->
+# - Install the required packages
+# - Update the repositories and then install the necessary packages ( Nginx, php7.4 php7.4-fpm php7.4-cgi php7.4-mysql resolvconf )
+# - As it will also configure the DNS Resolver to resolve from certain DNS servers ( defined in the variables section )
+# - Create new users & groups, add this group to /etc/sudoers ( allow all users in the group to execute any command without password )
+#   add those users to that group, and store the public key at $home/.ssh/authorized_keys ( the public keys are defined in the variables section )
+# - Configure the SSHD Service, it will enable the Public Key authentication method, disable root login via SSH & configure SSHD
+#   to work on port 8022 instead of 22
+#
+# Author		: Ashraf Abdelrazik
+# Email			: ashrafabdelrazik1996@gmail.com
+
+#######################################################
+#--------------------- Variables ---------------------#
+# Ash SSH PubKey for
+ash_pubkey="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRew9XE040Ly1wU72T1ruCbXNhUAtVu1gF1wwTclIPnkoQl5BDjtH1u7Ql7cdjE6VIw0mfBjDkglER7ayX+O0Fpp5ld5fnI6xvhqkXsOT286J1+Px/0xK1DGO/S/ZV+X+da9TjHfhnnp6+35jRHFsdhp2NnO6ocf7CHqnN0ncyfHfRHqWarf+8aXMEXiAgYmssqbTr/M/ljarV7d0PrSg0g6Qunm29EzOHztlIl7me3PorDWUUsMomBACJeQXal6TmJ5nbjPT3xW4iHYaogdKrsJ7W62wtXeihPPrI6EWKeWOD7iV6bsVsXTGPEZGs/Fq2+s8xDqJi9AJtmUYVM5i0wCiEB5w+puIERhZ9Ru9ggNA4Fo/FO7F5B2eW49r2KQkupVp42w9Oem6hDqPu6HeT+9P4QHpuWY86hMMX8mqzDUWX5Wq20j/zc/g8vrearDF3dahFai0hEZPSBz2MhD/JmhsIZW9HkRaKvI2uODfgzoELWbK5WNkFgqxLhyfvGPM= ash@ubuntu"
+# Mikkawy SSH PubKey
+mikkawy_pubkey="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDfn1DYS0vSCsvMHo+bc3bHA+SIR6wUkTLrRv+qyAe9l3cTlxLdr4Rj/JxmEU0+od4IJ8TUs2NtuJs/8eZrmeoXU/1szRq+Y36eqg5yMN/Po10GdZo4ezjCjUb5Y9wF7UONLNHnopmMNEilA39IRoyGZP0+A/3YexCr/aD5Ip/XNymC9bbQkbtQ7pyEnKbm8biZvklhgWL4KKbLeJa05nO3Of5Z4pkgkLS+yCaKjD54jYlVLqtegTp1e5+3ZTUtsQm2iL66yRlhs00mFYQ/D6mC/0tqrRwvys8QKUTpvnYd9wDDn4K6MF1h3gaB/ysFQIe4uu6Nzim8VWcgOJ2Hq7mP6IilIqv/piLor9RkigFybUIY/PIAL5r4OtbL+T+syxSSELMzZVETApzSP7tjU8g8iOkggXqxut6zkfnwNUnY8hRNzyBATristGOTuNYo2C3Gt7TVUWN9fVJVrc1EhhFHDpCkQ3KWEaVRlyD3QEjD3GwNYcbIKYthIQKCy0NE3SGkqG89csHK17imiI8ubJYGsERlCRd6cgjHYVvlVMMMQVjK2rwyb6cMWSHGD9ljgX51zS3gzNYPDMVuN6dF7GzFHOiV2XmMxPhWo4DLtKz+68y5O+BHHQTn4/9qKTPOtPVtFOim8mQzOg+OHJ3xYhmN8nh02LqAPiUorQKWh6CeTQ== mikkawy@mikkawy-UX303LB"
+# Sudoers Group Name
+group_name="sysad"
+# Users
+users=("ash" "mikkawy")
+# Name Servers
+nameservers=("1.1.1.1" "8.8.8.8" "8.8.4.4")
+# ResolvConf Configuration File
+resolvconf_head_file="/etc/resolvconf/resolv.conf.d/head"
+sshd_port="8022"
+sshd_config_path="/etc/ssh/sshd_config"
+#--------------------- Variables ---------------------#
+#######################################################
+
+
+#######################################################
+#------------------- Requirements --------------------#
+# Update The Repository
+apt update -y
+apt -y install lsb-release apt-transport-https ca-certificates
+wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
+echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/php.list
+# Update The Repository
+apt update -y
+# Remove apache2 if installed
+apt remove apache2 -y
+# Install nginx, php7.4, php7.4-fpm, php7.4-cgi, php7.4-mysql resolvconf
+apt install nginx php7.4 php7.4-fpm php7.4-cgi php7.4-mysql resolvconf -y
+#------------------- Requirements --------------------#
+#######################################################
+
+#######################################################
+#--------------- Configure DNS Resolver --------------#
+for nameserver in ${nameservers[@]}
+do
+	echo "nameserver $nameserver" >> $resolvconf_head_file
+done
+
+# Enable ResolvConf Updates
+resolvconf --enable-updates
+# -u will update the /etc/resolv.conf file
+resolvconf -u
+#--------------- Configure DNS Resolver --------------#
+#######################################################
+
+
+#######################################################
+#------------------ Users & Groups -------------------#
+# Create Group
+addgroup $group_name
+
+# Allow All Users In Group To Execute Any Command Without Password
+echo "%$group_name  ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+for user in ${users[@]}
+do
+	# Add User
+	adduser $user
+	# Add User To The Sudoers Group
+	adduser $user $group_name
+	# Create '.ssh' Directory
+	mkdir -p /home/$user/.ssh
+done
+
+# Store the Public Key in $HOME/.ssh/authorized_keys
+echo "$ash_pubkey" > /home/${users[0]}/.ssh/authorized_keys
+echo "$mikkawy_pubkey" > /home/${users[1]}/.ssh/authorized_keys
+#------------------ Users & Groups -------------------#
+#######################################################
+
+
+#######################################################
+#------------------ Configure SSHD -------------------#
+# Change SSHD Port
+echo "Port $sshd_port" >> $sshd_config_path
+# Enable Public Key Authentication
+echo "PubkeyAuthentication yes" >> $sshd_config_path
+# Disable Root Login
+echo "PermitRootLogin no" >> $sshd_config_path
+
+# Restart SSHD
+service sshd restart
+#------------------ Configure SSHD -------------------#
+#######################################################
