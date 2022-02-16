@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Script Name	: MySQL Server Backup Script
+# Description	: This script will backup and encrypt the database
+# Crontab Job	: 00 00 * * * bash /usr/local/scripts/backup >> /etc/backups/log.txt 2>&1
+# Author		: Ashraf Abdelrazik
+# Email			: ashrafabdelrazik1996@gmail.com
+
+#################################################
+#------------------> Variables <----------------#
+backups_directory="/etc/backups"
+key_path="/root/.ssh/backup.pem"
+#------------------> Variables <----------------#
+#################################################
+
+
+echo "###################################################"
+echo "#------------ Backup Date: $(date +'%d-%m-%Y') ------------#"
+
+echo "[!] Started at $(date +'%T')"
+# Dump mikkawy_db and save it 
+if mysqldump -u root mikkawy_db > $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').sql ; then
+        echo "[+] Successfully dumped the database ..."
+else
+        echo "[-] Failed to dump the database ..."
+fi
+
+# Encrypt the backup file
+if openssl smime -encrypt -aes256 -in $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').sql -binary -outform DEM -out $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').sql.enc $key_path > /dev/null ; then
+		echo "[+] Successfully Encrypted ..."
+else
+        echo "[-] Failed to encrypt ..."
+fi
+
+# Remove the original backup file
+if rm $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').sql > /dev/null ; then
+        echo "[+] Successfully removed the original sql backup ..."
+else
+        echo "[-] Failed to removed the original sql backup ..."
+fi
+
+echo "[!] Ended at $(date +'%T')"
+echo "###################################################"
+echo "###################################################"
+echo ""
