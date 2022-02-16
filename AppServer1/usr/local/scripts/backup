@@ -3,8 +3,8 @@
 # Script Name	: App Server Backup Script
 # Description	: This script will backup and encrypt the document root of the app server (/var/www/html/)
 # Crontab Job	: 00 00 * * * bash /usr/local/scripts/backup >> /etc/backups/log.txt 2>&1
-# Author		: Ashraf Abdelrazik
-# Email			: ashrafabdelrazik1996@gmail.com
+# Author	: Ashraf Abdelrazik
+# Email		: ashrafabdelrazik1996@gmail.com
 
 #################################################
 #------------------> Variables <----------------#
@@ -35,7 +35,7 @@ fi
 
 # Encrypt the backup file
 if openssl smime -encrypt -aes256 -in $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz -binary -outform DEM -out $backups_directory/$(hostname)-backup-$(date +'%d-%m-%Y').tar.gz.enc $key_path > /dev/null ; then
-		echo "[+] Successfully Encrypted ..."
+	echo "[+] Successfully Encrypted ..."
 else
         echo "[-] Failed to encrypt ..."
 fi
